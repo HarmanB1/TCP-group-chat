@@ -1,0 +1,208 @@
+#include "../include/server.h"
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+// globals
+clientInfo clients[MAX_CLIENTS];
+int expectedClients = 0;
+int numClients = 0;
+int endCount = 0;
+
+pthread_mutex_t clientMutex = PTHREAD_MUTEX_INITIALIZER;
+
+void broadCaster(uint8_t *message, ssize_t len, struct sockaddr_in *sender) {
+  uint8_t bMsg[BUFFER_SIZE];
+
+  bMsg[0] = MSG_CHAT;
+
+  // ip
+  uint32_t ip = sender->sin_addr.s_addr;
+  memcpy(bMsg + 1, &ip, sizeof(uint32_t));
+
+  uint16_t port = sender->sin_port;
+  memcpy(bMsg + 5, &port, sizeof(uint16_t));
+
+  ssize_t length = len - 2;
+  memcpy(bMsg + 7, message + 1, length);
+
+  bMsg[7 + length] = '\n';
+  ssize_t totalLen = 7 + length + 1;
+
+
+  int targetFds[MAX_CLIENTS];
+  int count =0;
+
+  pthread_mutex_lock(&clientMutex);
+
+
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (clients[i].active) {
+      targetFds[count++] = clients[i].socketFd;
+    }
+  }
+
+  pthread_mutex_unlock(&clientMutex);
+  for(int i =0; i <count; i++){
+  
+      send(clients[i].socketFd, bMsg, totalLen, 0);
+  }
+
+
+}
+
+int findSpot() {
+  int index = -1;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (!clients[i].active) {
+
+      return i;
+    }
+  }
+  return index;
+}
+
+void *handler(void *arg) {
+  int index = *(int *)arg;
+  free(arg);
+
+  int clientFd = clients[index].socketFd;
+  uint8_t buffer[BUFFER_SIZE];
+  ssize_t totalReceived = 0;
+
+  while (1) {
+    ssize_t rec =
+        recv(clientFd, buffer + totalReceived, BUFFER_SIZE - totalReceived, 0);
+    if (rec <= 0) {
+      break;
+    }
+    totalReceived += rec;
+    ssize_t start = 0;
+    for (ssize_t i = 0; i < totalReceived; i++) {
+      if (buffer[i] == '\n') {
+        ssize_t msgLen = i - start + 1;
+
+        uint8_t message[BUFFER_SIZE];
+        memcpy(message, buffer + start, msgLen);
+        uint8_t msgType = message[0];
+
+        if (msgType == MSG_CHAT) {
+          broadCaster(message, msgLen, &clients[index].addr);
+        } else if (msgType == MSG_END) {
+          pthread_mutex_lock(&clientMutex);
+          endCount++;
+          if (endCount == expectedClients) {
+            uint8_t endMsg[2] = {MSG_END, '\n'};
+            for (int x = 0; x < MAX_CLIENTS; x++) {
+              if (clients[x].active) {
+                send(clients[x].socketFd, endMsg, 2, 0);
+                close(clients[x].socketFd);
+                clients[x].active = 0;
+              }
+            }
+            pthread_mutex_unlock(&clientMutex);
+            exit(0);
+          }
+
+          pthread_mutex_unlock(&clientMutex);
+          close(clientFd);
+          clients[index].active = 0;
+          return NULL;
+        }
+        start = i + 1;
+      }
+    }
+    if (start > 0) {
+      memmove(buffer, buffer + start, totalReceived - start);
+      totalReceived -= start;
+    }
+  }
+
+  pthread_mutex_lock(&clientMutex);
+  close(clientFd);
+  clients[index].active = 0;
+
+  pthread_mutex_unlock(&clientMutex);
+  return NULL;
+}
+
+int main(int argc, char *argv[]) {
+  int port = atoi(argv[1]);
+  expectedClients = atoi(argv[2]);
+
+  memset(clients, 0, sizeof(clients));
+  // setup socket
+  int serverFd = socket(AF_INET, SOCK_STREAM, 0);
+  struct sockaddr_in serverAddr;
+  memset(&serverAddr, 0, sizeof(struct sockaddr_in));
+  serverAddr.sin_family = AF_INET;
+  serverAddr.sin_port = htons(port);
+  serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+  if (bind(serverFd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+    perror("bind failed");
+    close(serverFd);
+    exit(1);
+  }
+  if (listen(serverFd, 32) < 0) {
+    perror("listen failed");
+    close(serverFd);
+    exit(1);
+  }
+
+  // loop
+  while (1) {
+    struct sockaddr_in clientAddr;
+    socklen_t clientLen = sizeof(clientAddr);
+    int clientFd = accept(serverFd, (struct sockaddr *)&clientAddr, &clientLen);
+
+    pthread_mutex_lock(&clientMutex);
+
+    if (numClients >= expectedClients) {
+      pthread_mutex_unlock(&clientMutex);
+      close(clientFd);
+      continue;
+    }
+    int index = findSpot();
+
+    if (index >= 0) {
+      clients[index].socketFd = clientFd;
+      clients[index].addr = clientAddr;
+      clients[index].active = 1;
+      numClients++;
+
+      int curClients = numClients;
+      pthread_mutex_unlock(&clientMutex);
+
+      pthread_t threadId;
+      int *arg = malloc(sizeof(int));
+      *arg = index;
+      if (pthread_create(&threadId, NULL, handler, arg) != 0) {
+        perror("thread create failed");
+        clients[index].active = 0;
+        numClients--;
+        close(clientFd);
+        free(arg);
+      } else {
+        pthread_detach(threadId);
+      }
+
+      if (curClients >= expectedClients) {
+        break;
+      }
+
+    } else {
+
+      pthread_mutex_unlock(&clientMutex);
+      close(clientFd);
+    }
+  }
+
+  while (1) {
+    sleep(10);
+  }
+  close(serverFd);
+  return 0;
+}

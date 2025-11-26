@@ -1,0 +1,21 @@
+#pragma once
+
+#include <pthread.h>
+#include <stdint.h>
+#include <stdio.h>
+
+
+
+#define BUFFER_SIZE 1024
+#define MSG_CHAT 0
+#define MSG_END 1
+
+
+typedef struct{
+  int socketFd;
+  int numMsgs;
+
+  FILE *logFp;
+  char *logFile;
+
+}clientS;

@@ -1,0 +1,17 @@
+#pragma once
+
+#include <netinet/in.h>
+#include <pthread.h>
+#include <stdint.h>
+#include <sys/socket.h>
+
+#define MAX_CLIENTS 100
+#define BUFFER_SIZE 1024
+#define MSG_CHAT 0
+#define MSG_END 1
+
+typedef struct {
+  int sockFd;
+  struct sockaddr_in addr;
+  int active;
+} clientInfo;

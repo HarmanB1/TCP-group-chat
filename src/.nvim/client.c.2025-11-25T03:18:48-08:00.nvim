@@ -1,0 +1,140 @@
+#include "client.h"
+#include <arpa/inet.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+int convert(uint8_t *buf, ssize_t buf_size, char *str, ssize_t str_size) {
+  if (buf == NULL || str == NULL || buf_size <= 0 ||
+      str_size < (buf_size * 2 + 1)) {
+    return -1;
+  }
+
+  for (int i = 0; i < buf_size; i++)
+    sprintf(str + i * 2, "%02X", buf[i]);
+  str[buf_size * 2] = '\0';
+
+  return 0;
+}
+
+void *sendFunc(void *arg) {
+  clientS *clienter = (clientS *)arg;
+
+  for (int i = 0; i < clienter->numMsgs; i++) {
+    uint8_t randomBuf[10];
+    getentropy(randomBuf, 10);
+    char hexStr[10 * 2 + 1];
+    convert(randomBuf, 10, hexStr, sizeof(hexStr));
+
+    uint8_t message[BUFFER_SIZE];
+    message[0] = MSG_CHAT;
+    ssize_t hexLen = strlen(hexStr);
+    memcpy(message + 1, hexStr, hexLen);
+    message[1 + hexLen] = '\n';
+    ssize_t msgLen = 1 + hexLen + 1;
+
+    send(clienter->socketFd, message, msgLen, 0);
+
+      }
+
+uint8_t endMsg[2] = {MSG_END, '\n'};
+    send(clienter->socketFd, endMsg, 2, 0);
+    return NULL;
+
+}
+
+void *recFunc(void *arg) {
+
+  clientS *clienter = (clientS *)arg;
+  uint8_t buffer[BUFFER_SIZE];
+  ssize_t totalReceived = 0;
+
+  while (1) {
+    ssize_t rec = recv(clienter->socketFd, buffer + totalReceived,
+                       BUFFER_SIZE - totalReceived - 1, 0);
+    if (rec <= 0) {
+      break;
+    }
+    totalReceived += rec;
+    ssize_t start = 0;
+    for (ssize_t i = 0; i < totalReceived; i++) {
+      if (buffer[i] == '\n') {
+        ssize_t msgLen = i - start + 1;
+        uint8_t message[BUFFER_SIZE];
+        memcpy(message, buffer + start, msgLen);
+        uint8_t msgType = message[0];
+
+        if (msgType == MSG_CHAT) {
+
+          uint32_t ip;
+          memcpy(&ip, message + 1, sizeof(uint32_t));
+          struct in_addr ip_addr;
+          ip_addr.s_addr = ip;
+          char ipStr[16];
+          inet_ntop(AF_INET, &ip_addr, ipStr, sizeof(ipStr));
+
+          uint16_t port;
+          memcpy(&port, message + 5, sizeof(uint16_t));
+          port = ntohs(port);
+
+          ssize_t length = msgLen - 7 - 1;
+
+          char content[BUFFER_SIZE];
+          memcpy(content, message + 7, length);
+          content[length] = '\0';
+          fprintf(clienter->logFp, "%-15s%-10u%s\n", ipStr, port, content);
+          fflush(clienter->logFp);
+
+          printf( "%-15s%-10u%s\n", ipStr, port, content);
+
+        } else if (msgType == MSG_END) {
+          return NULL;
+        }
+        start = i + 1;
+      }
+    }
+      if (start > 0) {
+        memmove(buffer, buffer + start, totalReceived - start);
+        totalReceived -= start;
+      }
+    }
+
+    return NULL;
+  }
+
+
+int main(int argc, char *argv[]) {
+
+  char *serverIp = argv[1];
+  int serverPort = atoi(argv[2]);
+  int numMsgs = atoi(argv[3]);
+  char *logFile = argv[4];
+
+  int sockFd = socket(AF_INET, SOCK_STREAM, 0);
+
+  struct sockaddr_in serverAddr;
+  memset(&serverAddr, 0, sizeof(struct sockaddr_in));
+  serverAddr.sin_family = AF_INET;
+  serverAddr.sin_port = htons(serverPort);
+
+  inet_pton(AF_INET, serverIp, &serverAddr.sin_addr);
+  connect(sockFd, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+
+  // file stuff
+  FILE *logFp = fopen(logFile, "w");
+  clientS clienter = {sockFd, numMsgs, logFp, logFile};
+
+  pthread_t sendT, recT;
+
+  pthread_create(&recT, NULL, recFunc, &clienter);
+  pthread_create(&sendT, NULL, sendFunc, &clienter);
+
+  pthread_join(sendT, NULL);
+  pthread_join(recT, NULL);
+  fclose(logFp);
+  close(sockFd);
+  return 0;
+}

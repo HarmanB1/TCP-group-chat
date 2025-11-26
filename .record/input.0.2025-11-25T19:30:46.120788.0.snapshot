@@ -1,0 +1,12 @@
+{"version": 2, "width": 87, "height": 52, "timestamp": 1764127846, "idle_time_limit": 5.0, "env": {"SHELL": "/usr/bin/zsh", "TERM": "xterm-256color"}}
+[0.065115, "o", "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                      \r \r"]
+[0.065548, "o", "\u001b]2;cmpt201@a42a52a1401c:~/units/04-long-assignments/a11-HarmanB1\u0007\u001b]1;../a11-HarmanB1\u0007"]
+[0.066773, "o", "\u001b]7;file://a42a52a1401c/home/cmpt201/units/04-long-assignments/a11-HarmanB1\u001b\\"]
+[0.076594, "o", "\r\u001b[0m\u001b[27m\u001b[24m\u001b[J\u001b[35m[recording] \u001b[34m~/units/04-long-assignments/a11-HarmanB1\u001b[32m❯\u001b[39m \u001b[K"]
+[0.076704, "o", "\u001b[?1h\u001b=\u001b[?2004h"]
+[0.653854, "i", "n"]
+[0.657507, "o", "n"]
+[0.660847, "o", "\b\u001b[1m\u001b[31mn\u001b[0m\u001b[39m"]
+[0.661074, "o", "\b\u001b[1m\u001b[31mn\u001b[0m\u001b[39m\u001b[92mvim src/server.c\u001b[39m\u001b[16D"]
+[0.785352, "i", "v"]
+[0.787426, "o", "\b\u001b[1m\u001b[31mn\u001b[1m\u001b[31mv\u001b[0m\u001b[39m"]

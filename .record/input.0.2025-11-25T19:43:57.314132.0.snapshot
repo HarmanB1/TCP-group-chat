@@ -1,0 +1,11 @@
+{"version": 2, "width": 87, "height": 52, "timestamp": 1764128637, "idle_time_limit": 5.0, "env": {"SHELL": "/usr/bin/zsh", "TERM": "xterm-256color"}}
+[0.070789, "o", "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                      \r \r\u001b]2;cmpt201@a42a52a1401c:~/units/04-long-assignments/a11-HarmanB1\u0007\u001b]1;../a11-HarmanB1\u0007"]
+[0.072184, "o", "\u001b]7;file://a42a52a1401c/home/cmpt201/units/04-long-assignments/a11-HarmanB1\u001b\\"]
+[0.082639, "o", "\r\u001b[0m\u001b[27m\u001b[24m\u001b[J\u001b[35m[recording] \u001b[34m~/units/04-long-assignments/a11-HarmanB1\u001b[32m❯\u001b[39m \u001b[K\u001b[?1h\u001b="]
+[0.082759, "o", "\u001b[?2004h"]
+[1.946535, "i", "."]
+[1.951235, "o", "."]
+[1.951687, "o", "\b\u001b[32m.\u001b[39m"]
+[1.951977, "o", "\b\u001b[32m.\u001b[39m\u001b[92m/server-tester.arm64 127.0.0.1 8\u001b[92m0\u001b[92m00 1 1000 2\u001b[39m\u001b[K\u001b[A\u001b[43C"]
+[2.55559, "i", ""]
+[2.556345, "o", "\b\u001b[K\u001b[1B\r\u001b[K\u001b[A\u001b[54C"]

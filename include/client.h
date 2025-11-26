@@ -1,0 +1,23 @@
+#pragma once
+
+#include <pthread.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#define BUFFER_SIZE 1024
+#define MSG_CHAT 0
+#define MSG_END 1
+
+typedef struct {
+  int socketFd;
+  int numMsgs;
+
+  FILE *logFp;
+  char *logFile;
+
+} clientS;
+
+void *sendFunc(void *arg);
+void *recFunc(void *arg);
+int convert(uint8_t *buf, ssize_t buf_size, char *str, ssize_t str_size);
